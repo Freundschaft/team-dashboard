@@ -27,3 +27,10 @@ Users can be both explicit members of a team, or inherited through child team me
 
 Aggregate parent child relationships in postgres for higher performance, add trigger function to avoid circular references between teams
 Aggregate team membership directly in postgres into JSON array, for easier usage and higher performance, marking direct members of a team, as opposed to inherited members
+
+## Production Deployment considerations
+
+at the moment the application doesnt implement any kind of login, for production this would be obviously required.
+an audit log including, who changed what and when would also be required, and possibly an undo feature, if any team changes were to be reverted / historical storage of changes
+caching should be tuned, at the moment nextjs standard caching configuration is used
+postgres connection should be tuned, performances of queries should be measured and optimized, depending on production environment, considerations regarding serverless and connection pooling should be made
