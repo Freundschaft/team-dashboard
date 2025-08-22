@@ -76,8 +76,8 @@ export default function TeamEditForm({ teamId }: TeamEditFormProps) {
       
       const updateData: UpdateTeamInput = {
         name: formData.name,
-        description: formData.description || null,
-        department: formData.department || null,
+        description: formData.description,
+        department: formData.department,
         parent_id: formData.parent_id
       };
       
