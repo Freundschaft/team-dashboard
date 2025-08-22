@@ -148,7 +148,7 @@ export default function MemberManagement({ teamId, members, onMembersChange }: M
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold text-foreground">Team Members</h2>
+        <h2 className="text-xl font-semibold text-foreground">Direct Team Members</h2>
         <button
           onClick={() => setShowAddForm(!showAddForm)}
           className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
