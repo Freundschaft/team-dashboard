@@ -1,6 +1,6 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import pool from './db';
+import pool from './pool';
 import {PoolClient} from "pg";
 
 export async function initializeDatabase(): Promise<void> {

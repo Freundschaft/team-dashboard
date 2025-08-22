@@ -3,7 +3,7 @@ import {config} from 'dotenv';
 config({path: '.env.local'});
 
 (async (): Promise<void> => {
-  const {initializeDatabase, runMigrations, runConstraints, runSeedData} = await import('@/lib/init-db');
+  const {initializeDatabase, runMigrations, runConstraints, runSeedData} = await import('@/lib/db/init');
   if (process.argv.includes('--seed')) {
     await runSeedData();
     return;

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {getValidParentTeams} from '@/lib/queries';
+import {getValidParentTeams} from '@/lib/db/team';
 import {ApiResponse, Team} from '@/types';
 
 interface RouteParams {

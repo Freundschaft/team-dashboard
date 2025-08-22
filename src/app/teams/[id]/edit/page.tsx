@@ -1,6 +1,6 @@
 import TeamEditForm from '@/components/TeamEditForm';
-import { getTeamById, getValidParentTeams, getTeamMembers, getAllUsers } from '@/lib/queries';
-import { Team, TeamMemberWithUser, User } from '@/types';
+import { getTeamById, getValidParentTeams, getTeamMembers } from '@/lib/db/team';
+import {getAllUsers} from '@/lib/db/user';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 

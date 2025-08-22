@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { updateTeamMember, removeTeamMember } from '@/lib/queries';
+import { updateTeamMember, removeTeamMember } from '@/lib/db/team';
 import {UpdateTeamMemberInput, ApiResponse, TeamMemberWithUser, MessagePayload  } from '@/types';
 
 interface RouteParams {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllUsers, createUser } from '@/lib/queries';
+import { getAllUsers, createUser } from '@/lib/db/user';
 import { ApiResponse, User, CreateUserInput } from '@/types';
 
 export async function GET(): Promise<NextResponse<ApiResponse<User[]>>> {

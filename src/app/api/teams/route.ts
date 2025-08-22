@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getTeamsHierarchy, createTeam } from '@/lib/queries';
+import { getTeamsHierarchy, createTeam } from '@/lib/db/team';
 import {CreateTeamInput, ApiResponse, TeamsHierarchyResponse, Team} from '@/types';
 
 export async function GET(): Promise<NextResponse<ApiResponse<TeamsHierarchyResponse>>> {
