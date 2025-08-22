@@ -1,8 +1,19 @@
-import { config } from 'dotenv';
-config({ path: '.env.local' });
+import {config} from 'dotenv';
 
-async function main(): Promise<void> {
-  const { initializeDatabase } = await import('@/lib/init-db');
+config({path: '.env.local'});
+
+(async (): Promise<void> => {
+  const {initializeDatabase, runMigrations, runConstraints, runSeedData} = await import('@/lib/init-db');
+  if (process.argv.includes('--seed')) {
+    await runSeedData();
+    return;
+  }
+  if (process.argv.includes('--migrate')) {
+    await runMigrations();
+    await runConstraints();
+    return;
+  }
+
   try {
     console.log('Starting database initialization...');
 
@@ -13,6 +24,4 @@ async function main(): Promise<void> {
     console.error('Database initialization failed:', error);
     process.exit(1);
   }
-}
-
-main();
+})();

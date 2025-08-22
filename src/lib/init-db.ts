@@ -66,7 +66,6 @@ export async function runSeedData(): Promise<void> {
     } else {
       console.log('Database already has data.');
     }
-    
   } catch (error) {
     console.error('Database seeding failed:', error);
     throw error;
