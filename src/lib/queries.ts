@@ -106,19 +106,67 @@ export async function getTeamsHierarchy(): Promise<TeamWithMembers[]> {
     teamsMap.set(team.id, team);
   }
   
-  // Build hierarchy and calculate paths
+  // First pass: identify root teams and build basic hierarchy
   for (const team of teamsWithMembers) {
     if (team.parent_id === null) {
-      team.path = team.name;
       rootTeams.push(team);
     } else {
       const parent = teamsMap.get(team.parent_id);
       if (parent) {
-        team.path = `${parent.path} > ${team.name}`;
         parent.children!.push(team);
       }
     }
   }
+  
+  // Second pass: calculate paths recursively
+  function calculatePaths(teams: TeamWithMembers[], parentPath = '') {
+    teams.forEach(team => {
+      team.path = parentPath ? `${parentPath} > ${team.name}` : team.name;
+      if (team.children && team.children.length > 0) {
+        calculatePaths(team.children, team.path);
+      }
+    });
+  }
+  
+  calculatePaths(rootTeams);
+  
+  // Function to collect all members from a team and its descendants
+  function collectAllMembers(team: TeamWithMembers): TeamMemberWithUser[] {
+    const allMembers = new Map<string, TeamMemberWithUser>();
+    
+    // Add direct members
+    team.members.forEach(member => {
+      const key = `${member.user_id}`;
+      allMembers.set(key, member);
+    });
+    
+    // Recursively add members from child teams
+    if (team.children) {
+      team.children.forEach(child => {
+        const childMembers = collectAllMembers(child);
+        childMembers.forEach(member => {
+          const key = `${member.user_id}`;
+          // Only add if user is not already a member (direct membership takes precedence)
+          if (!allMembers.has(key)) {
+            allMembers.set(key, {
+              ...member,
+              // Create a virtual membership record for inherited members
+              id: -1, // Use negative ID to indicate inherited membership
+              team_id: team.id,
+              role: member.role, // Keep original role from child team
+            });
+          }
+        });
+      });
+    }
+    
+    return Array.from(allMembers.values());
+  }
+  
+  // Update each team with inherited members
+  teamsMap.forEach(team => {
+    team.members = collectAllMembers(team);
+  });
   
   // Sort children recursively
   function sortChildren(teams: TeamWithMembers[]): void {

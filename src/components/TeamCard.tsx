@@ -60,20 +60,30 @@ export default function TeamCard({ team, depth = 0 }: TeamCardProps) {
               Members ({team.members.length})
             </h4>
             <div className="flex flex-wrap gap-2">
-              {team.members.map(member => (
-                <div
-                  key={`${member.team_id}-${member.user_id}`}
-                  className="flex items-center gap-2 px-3 py-1 bg-gray-50 dark:bg-gray-700 rounded-full"
-                >
-                  <span className="text-sm text-foreground">{member.user.name}</span>
-                  <span className="text-xs text-foreground/60 capitalize">
-                    {member.role.replace('_', ' ')}
-                  </span>
-                  {!member.is_active && (
-                    <span className="text-xs text-red-500">(Inactive)</span>
-                  )}
-                </div>
-              ))}
+              {team.members.map(member => {
+                const isInherited = member.id === -1;
+                return (
+                  <div
+                    key={`${member.team_id}-${member.user_id}`}
+                    className={`flex items-center gap-2 px-3 py-1 rounded-full ${
+                      isInherited 
+                        ? 'bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800' 
+                        : 'bg-gray-50 dark:bg-gray-700'
+                    }`}
+                  >
+                    <span className="text-sm text-foreground">{member.user.name}</span>
+                    <span className="text-xs text-foreground/60 capitalize">
+                      {member.role.replace('_', ' ')}
+                    </span>
+                    {isInherited && (
+                      <span className="text-xs text-blue-600 dark:text-blue-400">(Inherited)</span>
+                    )}
+                    {!member.is_active && (
+                      <span className="text-xs text-red-500">(Inactive)</span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
