@@ -34,3 +34,6 @@ at the moment the application doesnt implement any kind of login, for production
 an audit log including, who changed what and when would also be required, and possibly an undo feature, if any team changes were to be reverted / historical storage of changes
 caching should be tuned, at the moment nextjs standard caching configuration is used
 postgres connection should be tuned, performances of queries should be measured and optimized, depending on production environment, considerations regarding serverless and connection pooling should be made
+docker image creation should be added
+UI is obviously very basic, and would need a lot of improvement
+Tests are obviously very basic and would need a lot of expansion
