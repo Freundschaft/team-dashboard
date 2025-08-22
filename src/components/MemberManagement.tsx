@@ -1,16 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { User, TeamMemberWithUser, CreateTeamMemberInput, UpdateTeamMemberInput, CreateUserInput } from '@/types';
 
 interface MemberManagementProps {
   teamId: number;
   members: TeamMemberWithUser[];
+  users: User[];
   onMembersChange: (members: TeamMemberWithUser[]) => void;
 }
 
-export default function MemberManagement({ teamId, members, onMembersChange }: MemberManagementProps) {
-  const [users, setUsers] = useState<User[]>([]);
+export default function MemberManagement({ teamId, members, users: initialUsers, onMembersChange }: MemberManagementProps) {
+  const [users, setUsers] = useState<User[]>(initialUsers);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -26,23 +27,6 @@ export default function MemberManagement({ teamId, members, onMembersChange }: M
     email: '',
     role: 'member'
   });
-
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const fetchUsers = async () => {
-    try {
-      const response = await fetch('/api/users');
-      const data = await response.json();
-      
-      if (data.success) {
-        setUsers(data.data);
-      }
-    } catch (err) {
-      console.error('Failed to fetch users:', err);
-    }
-  };
 
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();

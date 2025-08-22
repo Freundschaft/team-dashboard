@@ -1,71 +1,30 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Team, TeamMemberWithUser, UpdateTeamInput } from '@/types';
+import { Team, TeamMemberWithUser, UpdateTeamInput, User } from '@/types';
 import Link from 'next/link';
-import LoadingSpinner from './LoadingSpinner';
 import MemberManagement from './MemberManagement';
 
 interface TeamEditFormProps {
-  teamId: number;
+  team: Team;
+  validParents: Team[];
+  members: TeamMemberWithUser[];
+  users: User[];
 }
 
-export default function TeamEditForm({ teamId }: TeamEditFormProps) {
+export default function TeamEditForm({ team, validParents, members: initialMembers, users }: TeamEditFormProps) {
   const router = useRouter();
-  const [team, setTeam] = useState<Team | null>(null);
-  const [validParents, setValidParents] = useState<Team[]>([]);
-  const [members, setMembers] = useState<TeamMemberWithUser[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [members, setMembers] = useState<TeamMemberWithUser[]>(initialMembers);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    department: '',
-    parent_id: null as number | null
+    name: team.name,
+    description: team.description || '',
+    department: team.department || '',
+    parent_id: team.parent_id
   });
-
-  useEffect(() => {
-    fetchData();
-  }, [teamId]);
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      
-      const [teamResponse, validParentsResponse, membersResponse] = await Promise.all([
-        fetch(`/api/teams/${teamId}`),
-        fetch(`/api/teams/${teamId}/valid-parents`),
-        fetch(`/api/teams/${teamId}/members`)
-      ]);
-      
-      const teamData = await teamResponse.json();
-      const validParentsData = await validParentsResponse.json();
-      const membersData = await membersResponse.json();
-      
-      if (teamData.success && validParentsData.success && membersData.success) {
-        const teamInfo = teamData.data;
-        setTeam(teamInfo);
-        setValidParents(validParentsData.data);
-        setMembers(membersData.data);
-        
-        setFormData({
-          name: teamInfo.name,
-          description: teamInfo.description || '',
-          department: teamInfo.department || '',
-          parent_id: teamInfo.parent_id
-        });
-      } else {
-        setError('Failed to fetch team data');
-      }
-    } catch (err) {
-      setError(`Failed to fetch team data ${err}`);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,7 +40,7 @@ export default function TeamEditForm({ teamId }: TeamEditFormProps) {
         parent_id: formData.parent_id
       };
       
-      const response = await fetch(`/api/teams/${teamId}`, {
+      const response = await fetch(`/api/teams/${team.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -111,7 +70,7 @@ export default function TeamEditForm({ teamId }: TeamEditFormProps) {
     try {
       setSaving(true);
       
-      const response = await fetch(`/api/teams/${teamId}`, {
+      const response = await fetch(`/api/teams/${team.id}`, {
         method: 'DELETE',
       });
       
@@ -128,30 +87,6 @@ export default function TeamEditForm({ teamId }: TeamEditFormProps) {
       setSaving(false);
     }
   };
-
-
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center py-12">
-        <LoadingSpinner />
-      </div>
-    );
-  }
-
-  if (!team) {
-    return (
-      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
-        <h3 className="text-red-800 dark:text-red-400 font-medium mb-2">Team not found</h3>
-        <p className="text-red-600 dark:text-red-300">The team you&#39;re looking for doesn&#39;t exist.</p>
-        <Link
-          href="/"
-          className="mt-4 inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          Back to Teams
-        </Link>
-      </div>
-    );
-  }
 
 
   return (
@@ -266,7 +201,7 @@ export default function TeamEditForm({ teamId }: TeamEditFormProps) {
         </div>
 
         <div>
-          <MemberManagement teamId={teamId} members={members} onMembersChange={setMembers} />
+          <MemberManagement teamId={team.id} members={members} users={users} onMembersChange={setMembers} />
         </div>
       </div>
     </div>

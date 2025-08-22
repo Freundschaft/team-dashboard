@@ -16,6 +16,7 @@ disclaimer: claude code was used to generate boilerplate code
 
 * use nextjs, since its also a SSR framework
 * Put data retrieval logic for main page in API calls, for faster page load only render main page server side, and utilizing loader to fetch team data afterwards
+* For Team Edit Page, we can use SSR to prerender the data on the server and eliminate one API call from the client
 * Use pg for postgres direct access
 * Team table to hold team information name, metadata and parentId, each team can only have 1 parent, but any amount of children
 * User table to hold information about user name and email, (possibly metadata for future consideration)
