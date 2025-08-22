@@ -210,24 +210,27 @@ export async function getTeamsHierarchy(): Promise<TeamWithMembers[]> {
 }
 
 export async function createTeam(input: CreateTeamInput): Promise<Team> {
-  // For new teams, we just need to make sure the parent exists if specified
-  // No circular reference check needed since this is a new team
   const query = `
     INSERT INTO teams (name, description, department, parent_id)
     VALUES ($1, $2, $3, $4)
     RETURNING *
   `;
   const values = [input.name, input.description || null, input.department || null, input.parent_id || null];
-  const result = await pool.query(query, values);
-  return rowToTeam(result.rows[0]);
+  
+  try {
+    const result = await pool.query(query, values);
+    return rowToTeam(result.rows[0]);
+  } catch (error: any) {
+    // Handle database constraint violations with user-friendly messages
+    if (error.message && error.message.includes('circular reference')) {
+      throw new Error('Cannot create team: the selected parent would create a circular reference in the team hierarchy');
+    }
+    // Re-throw other errors as-is
+    throw error;
+  }
 }
 
 export async function updateTeam(id: number, input: UpdateTeamInput): Promise<Team | null> {
-  // Check for circular reference if parent_id is being updated
-  if (input.parent_id !== undefined && input.parent_id !== null) {
-    const teams = await getAllTeams();
-  }
-
   const setParts: string[] = [];
   const values: any[] = [];
   let paramCount = 1;
@@ -261,8 +264,17 @@ export async function updateTeam(id: number, input: UpdateTeamInput): Promise<Te
     RETURNING *
   `;
   
-  const result = await pool.query(query, values);
-  return result.rows.length > 0 ? rowToTeam(result.rows[0]) : null;
+  try {
+    const result = await pool.query(query, values);
+    return result.rows.length > 0 ? rowToTeam(result.rows[0]) : null;
+  } catch (error: any) {
+    // Handle database constraint violations with user-friendly messages
+    if (error.message && error.message.includes('circular reference')) {
+      throw new Error('Cannot set parent team: this would create a circular reference in the team hierarchy');
+    }
+    // Re-throw other errors as-is
+    throw error;
+  }
 }
 
 export async function deleteTeam(id: number): Promise<boolean> {

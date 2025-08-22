@@ -4,6 +4,7 @@ import pool from './db';
 
 export async function initializeDatabase(): Promise<void> {
   await runMigrations();
+  await runConstraints();
   await runSeedData();
 }
 
@@ -23,6 +24,28 @@ export async function runMigrations(): Promise<void> {
     
   } catch (error) {
     console.error('Database migration failed:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function runConstraints(): Promise<void> {
+  const client = await pool.connect();
+  
+  try {
+    const constraintExists = await checkConstraintExists(client);
+    
+    if (!constraintExists) {
+      console.log('Database constraints not found. Applying constraints...');
+      await applyConstraints(client);
+      console.log('Database constraints applied successfully.');
+    } else {
+      console.log('Database constraints already exist.');
+    }
+    
+  } catch (error) {
+    console.error('Database constraint application failed:', error);
     throw error;
   } finally {
     client.release();
@@ -87,6 +110,27 @@ async function applySchema(client: any): Promise<void> {
   const migration = readFileSync(migrationPath, 'utf8');
   
   await client.query(migration);
+}
+
+async function checkConstraintExists(client: any): Promise<boolean> {
+  const query = `
+    SELECT EXISTS (
+      SELECT FROM information_schema.triggers 
+      WHERE event_object_schema = 'public' 
+      AND event_object_table = 'teams'
+      AND trigger_name = 'check_team_circular_reference'
+    ) as constraint_exists
+  `;
+  
+  const result = await client.query(query);
+  return result.rows[0].constraint_exists;
+}
+
+async function applyConstraints(client: any): Promise<void> {
+  const constraintPath = join(process.cwd(), 'database', 'add_circular_reference_constraint.sql');
+  const constraints = readFileSync(constraintPath, 'utf8');
+  
+  await client.query(constraints);
 }
 
 async function applySeedData(client: any): Promise<void> {
