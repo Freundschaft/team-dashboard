@@ -101,7 +101,7 @@ export async function getValidParentTeams(teamId: number): Promise<Team[]> {
         AND t.id NOT IN (
           SELECT id FROM team_descendants WHERE level > 0            -- exclude descendants of $1
       )
-      ORDER BY t.name;
+      ORDER BY path_text;
   `;
   
   const result = await pool.query(query, [teamId]);
