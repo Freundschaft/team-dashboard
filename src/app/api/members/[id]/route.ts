@@ -3,10 +3,11 @@ import { updateTeamMember, removeTeamMember } from '@/lib/queries';
 import { UpdateTeamMemberInput, ApiResponse } from '@/types';
 
 interface RouteParams {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
-export async function PUT(request: NextRequest, { params }: RouteParams): Promise<NextResponse<ApiResponse<any>>> {
+export async function PUT(request: NextRequest, props: RouteParams): Promise<NextResponse<ApiResponse<any>>> {
+  const params = await props.params;
   try {
     const id = parseInt(params.id);
     if (isNaN(id)) {
@@ -39,7 +40,8 @@ export async function PUT(request: NextRequest, { params }: RouteParams): Promis
   }
 }
 
-export async function DELETE(request: NextRequest, { params }: RouteParams): Promise<NextResponse<ApiResponse<any>>> {
+export async function DELETE(request: NextRequest, props: RouteParams): Promise<NextResponse<ApiResponse<any>>> {
+  const params = await props.params;
   try {
     const id = parseInt(params.id);
     if (isNaN(id)) {

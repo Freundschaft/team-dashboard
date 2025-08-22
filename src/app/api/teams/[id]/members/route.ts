@@ -3,10 +3,11 @@ import { getTeamMembers, addTeamMember } from '@/lib/queries';
 import { CreateTeamMemberInput, ApiResponse } from '@/types';
 
 interface RouteParams {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
-export async function GET(request: NextRequest, { params }: RouteParams): Promise<NextResponse<ApiResponse<any>>> {
+export async function GET(request: NextRequest, props: RouteParams): Promise<NextResponse<ApiResponse<any>>> {
+  const params = await props.params;
   try {
     const teamId = parseInt(params.id);
     if (isNaN(teamId)) {
@@ -30,7 +31,8 @@ export async function GET(request: NextRequest, { params }: RouteParams): Promis
   }
 }
 
-export async function POST(request: NextRequest, { params }: RouteParams): Promise<NextResponse<ApiResponse<any>>> {
+export async function POST(request: NextRequest, props: RouteParams): Promise<NextResponse<ApiResponse<any>>> {
+  const params = await props.params;
   try {
     const teamId = parseInt(params.id);
     if (isNaN(teamId)) {

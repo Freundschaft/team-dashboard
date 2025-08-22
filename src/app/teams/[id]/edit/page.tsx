@@ -1,10 +1,11 @@
 import TeamEditForm from '@/components/TeamEditForm';
 
 interface PageProps {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
-export default function TeamEditPage({ params }: PageProps) {
+export default async function TeamEditPage(props: PageProps) {
+  const params = await props.params;
   const teamId = parseInt(params.id);
 
   if (isNaN(teamId)) {
