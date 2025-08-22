@@ -26,7 +26,7 @@ export default function TeamsHierarchy() {
         setError(data.error || 'Failed to fetch teams');
       }
     } catch (err) {
-      setError('Failed to fetch teams');
+      setError(`Failed to fetch teams: ${err}`);
     } finally {
       setLoading(false);
     }

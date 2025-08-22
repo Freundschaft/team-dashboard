@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTeamMembers, addTeamMember } from '@/lib/queries';
-import { CreateTeamMemberInput, ApiResponse } from '@/types';
+import {CreateTeamMemberInput, ApiResponse, TeamMemberWithUser} from '@/types';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-export async function GET(request: NextRequest, props: RouteParams): Promise<NextResponse<ApiResponse<any>>> {
+export async function GET(request: NextRequest, props: RouteParams): Promise<NextResponse<ApiResponse<TeamMemberWithUser[]>>> {
   const params = await props.params;
   try {
     const teamId = parseInt(params.id);
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest, props: RouteParams): Promise<Nex
   }
 }
 
-export async function POST(request: NextRequest, props: RouteParams): Promise<NextResponse<ApiResponse<any>>> {
+export async function POST(request: NextRequest, props: RouteParams): Promise<NextResponse<ApiResponse<TeamMemberWithUser>>> {
   const params = await props.params;
   try {
     const teamId = parseInt(params.id);

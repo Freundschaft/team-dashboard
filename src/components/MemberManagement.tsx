@@ -71,7 +71,7 @@ export default function MemberManagement({ teamId, members, onMembersChange }: M
         setError(data.error || 'Failed to add member');
       }
     } catch (err) {
-      setError('Failed to add member');
+      setError(`Failed to add member ${err}`);
     } finally {
       setLoading(false);
     }
@@ -100,7 +100,7 @@ export default function MemberManagement({ teamId, members, onMembersChange }: M
         setError(data.error || 'Failed to update member');
       }
     } catch (err) {
-      setError('Failed to update member');
+      setError(`Failed to update member: ${err}`);
     } finally {
       setLoading(false);
     }
@@ -127,7 +127,7 @@ export default function MemberManagement({ teamId, members, onMembersChange }: M
         setError(data.error || 'Failed to remove member');
       }
     } catch (err) {
-      setError('Failed to remove member');
+      setError(`Failed to remove member ${err}`);
     } finally {
       setLoading(false);
     }

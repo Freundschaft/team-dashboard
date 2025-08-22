@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Team, User, TeamMemberWithUser, UpdateTeamInput } from '@/types';
+import { Team, TeamMemberWithUser, UpdateTeamInput } from '@/types';
 import Link from 'next/link';
 import LoadingSpinner from './LoadingSpinner';
 import MemberManagement from './MemberManagement';
@@ -61,7 +61,7 @@ export default function TeamEditForm({ teamId }: TeamEditFormProps) {
         setError('Failed to fetch team data');
       }
     } catch (err) {
-      setError('Failed to fetch team data');
+      setError(`Failed to fetch team data ${err}`);
     } finally {
       setLoading(false);
     }
@@ -97,7 +97,7 @@ export default function TeamEditForm({ teamId }: TeamEditFormProps) {
         setError(data.error || 'Failed to update team');
       }
     } catch (err) {
-      setError('Failed to update team');
+      setError(`Failed to update team ${err}`);
     } finally {
       setSaving(false);
     }
@@ -123,7 +123,7 @@ export default function TeamEditForm({ teamId }: TeamEditFormProps) {
         setError(data.error || 'Failed to delete team');
       }
     } catch (err) {
-      setError('Failed to delete team');
+      setError(`Failed to delete team ${err}`);
     } finally {
       setSaving(false);
     }

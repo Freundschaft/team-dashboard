@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { updateTeamMember, removeTeamMember } from '@/lib/queries';
-import { UpdateTeamMemberInput, ApiResponse } from '@/types';
+import {UpdateTeamMemberInput, ApiResponse, TeamMemberWithUser, MessagePayload  } from '@/types';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-export async function PUT(request: NextRequest, props: RouteParams): Promise<NextResponse<ApiResponse<any>>> {
+export async function PUT(request: NextRequest, props: RouteParams): Promise<NextResponse<ApiResponse<TeamMemberWithUser>>> {
   const params = await props.params;
   try {
     const id = parseInt(params.id);
@@ -40,7 +40,7 @@ export async function PUT(request: NextRequest, props: RouteParams): Promise<Nex
   }
 }
 
-export async function DELETE(request: NextRequest, props: RouteParams): Promise<NextResponse<ApiResponse<any>>> {
+export async function DELETE(request: NextRequest, props: RouteParams): Promise<NextResponse<ApiResponse<MessagePayload>>> {
   const params = await props.params;
   try {
     const id = parseInt(params.id);

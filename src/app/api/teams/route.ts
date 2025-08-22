@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTeamsHierarchy, createTeam } from '@/lib/queries';
-import { CreateTeamInput, ApiResponse, TeamsHierarchyResponse } from '@/types';
+import {CreateTeamInput, ApiResponse, TeamsHierarchyResponse, Team} from '@/types';
 
 export async function GET(): Promise<NextResponse<ApiResponse<TeamsHierarchyResponse>>> {
   try {
@@ -18,7 +18,7 @@ export async function GET(): Promise<NextResponse<ApiResponse<TeamsHierarchyResp
   }
 }
 
-export async function POST(request: NextRequest): Promise<NextResponse<ApiResponse<any>>> {
+export async function POST(request: NextRequest): Promise<NextResponse<ApiResponse<Team>>> {
   try {
     const body: CreateTeamInput = await request.json();
     

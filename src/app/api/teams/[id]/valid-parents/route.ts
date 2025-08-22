@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {getAllTeams, getValidParentTeams} from '@/lib/queries';
-import { ApiResponse } from '@/types';
+import {getValidParentTeams} from '@/lib/queries';
+import {ApiResponse, Team} from '@/types';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-export async function GET(request: NextRequest, props: RouteParams): Promise<NextResponse<ApiResponse<any>>> {
+export async function GET(request: NextRequest, props: RouteParams): Promise<NextResponse<ApiResponse<Team[]>>> {
   const params = await props.params;
   try {
     const id = parseInt(params.id);

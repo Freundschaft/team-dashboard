@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getAllUsers } from '@/lib/queries';
-import { ApiResponse } from '@/types';
+import {ApiResponse, User} from '@/types';
 
-export async function GET(): Promise<NextResponse<ApiResponse<any>>> {
+export async function GET(): Promise<NextResponse<ApiResponse<User[]>>> {
   try {
     const users = await getAllUsers();
     return NextResponse.json({

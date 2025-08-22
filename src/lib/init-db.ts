@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import pool from './db';
+import {PoolClient} from "pg";
 
 export async function initializeDatabase(): Promise<void> {
   await runMigrations();
@@ -74,7 +75,7 @@ export async function runSeedData(): Promise<void> {
   }
 }
 
-async function checkTablesExist(client: any): Promise<boolean> {
+async function checkTablesExist(client: PoolClient): Promise<boolean> {
   const query = `
     SELECT EXISTS (
       SELECT FROM information_schema.tables 
@@ -95,7 +96,7 @@ async function checkTablesExist(client: any): Promise<boolean> {
   return result.rows[0].tables_exist;
 }
 
-async function checkHasData(client: any): Promise<boolean> {
+async function checkHasData(client: PoolClient): Promise<boolean> {
   const query = `
     SELECT EXISTS (SELECT 1 FROM users LIMIT 1) as has_users,
            EXISTS (SELECT 1 FROM teams LIMIT 1) as has_teams
@@ -105,14 +106,14 @@ async function checkHasData(client: any): Promise<boolean> {
   return result.rows[0].has_users && result.rows[0].has_teams;
 }
 
-async function applySchema(client: any): Promise<void> {
+async function applySchema(client: PoolClient): Promise<void> {
   const migrationPath = join(process.cwd(), 'database', 'schema.sql');
   const migration = readFileSync(migrationPath, 'utf8');
   
   await client.query(migration);
 }
 
-async function checkConstraintExists(client: any): Promise<boolean> {
+async function checkConstraintExists(client: PoolClient): Promise<boolean> {
   const query = `
     SELECT EXISTS (
       SELECT FROM information_schema.triggers 
@@ -126,14 +127,14 @@ async function checkConstraintExists(client: any): Promise<boolean> {
   return result.rows[0].constraint_exists;
 }
 
-async function applyConstraints(client: any): Promise<void> {
+async function applyConstraints(client: PoolClient): Promise<void> {
   const constraintPath = join(process.cwd(), 'database', 'add_circular_reference_constraint.sql');
   const constraints = readFileSync(constraintPath, 'utf8');
   
   await client.query(constraints);
 }
 
-async function applySeedData(client: any): Promise<void> {
+async function applySeedData(client: PoolClient): Promise<void> {
   const seedPath = join(process.cwd(), 'database', 'seed.sql');
   const seed = readFileSync(seedPath, 'utf8');
   

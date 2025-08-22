@@ -1,17 +1,17 @@
 import pool from './db';
 import {
-  Team,
-  TeamWithMembers,
-  TeamMember,
-  TeamMemberWithUser,
-  User,
   CreateTeamInput,
-  UpdateTeamInput,
-  CreateTeamMemberInput,
-  UpdateTeamMemberInput,
+  CreateTeamMemberInput, SqlValue,
+  Team,
+  TeamMemberRow,
+  TeamMemberWithUser,
   TeamRow,
-  TeamMemberRow
+  TeamWithMembers,
+  UpdateTeamInput,
+  UpdateTeamMemberInput,
+  User
 } from '@/types';
+import {DatabaseError} from "pg";
 
 // Helper function to convert database row to Team object
 function rowToTeam(row: TeamRow): Team {
@@ -65,45 +65,41 @@ export async function getValidParentTeams(teamId: number): Promise<Team[]> {
               UNION ALL
               SELECT t.id, t.parent_id, td.level + 1
               FROM teams t
-                       JOIN team_descendants td ON t.parent_id = td.id
-          ),
+                       JOIN team_descendants td ON t.parent_id = td.id),
           tree AS (
               -- build full breadcrumbs from roots
-              SELECT
-                  t.id,
-                  t.parent_id,
-                  t.name,
-                  ARRAY[t.name::text] AS path_arr,   -- root carries its own name
-                  1 AS depth
+              SELECT t.id,
+                     t.parent_id,
+                     t.name,
+                     ARRAY [t.name::text] AS path_arr, -- root carries its own name
+                     1                    AS depth
               FROM teams t
               WHERE t.parent_id IS NULL
               UNION ALL
-              SELECT
-                  c.id,
-                  c.parent_id,
-                  c.name,
-                  tree.path_arr || c.name::text,
-                  tree.depth + 1
+              SELECT c.id,
+                     c.parent_id,
+                     c.name,
+                     tree.path_arr || c.name::text,
+                     tree.depth + 1
               FROM teams c
-                       JOIN tree ON c.parent_id = tree.id
-          )
-      SELECT
-          t.*,
-          CASE
-              WHEN tr.parent_id IS NULL THEN tr.name                          -- empty for roots
-              ELSE array_to_string(tr.path_arr, ' > ')                   -- e.g. "Root > Child > Grandchild"
-              END AS path_text,
-          tr.path_arr,
-          tr.depth
+                       JOIN tree ON c.parent_id = tree.id)
+      SELECT t.*,
+             CASE
+                 WHEN tr.parent_id IS NULL THEN tr.name -- empty for roots
+                 ELSE array_to_string(tr.path_arr, ' > ') -- e.g. "Root > Child > Grandchild"
+                 END AS path_text,
+             tr.path_arr,
+             tr.depth
       FROM teams t
                JOIN tree tr ON tr.id = t.id
       WHERE t.id <> $1
-        AND t.id NOT IN (
-          SELECT id FROM team_descendants WHERE level > 0            -- exclude descendants of $1
+        AND t.id NOT IN (SELECT id
+                         FROM team_descendants
+                         WHERE level > 0 -- exclude descendants of $1
       )
       ORDER BY path_text;
   `;
-  
+
   const result = await pool.query(query, [teamId]);
   return result.rows.map(rowToTeam);
 }
@@ -116,22 +112,33 @@ export async function getTeamById(id: number): Promise<Team | null> {
 
 export async function getTeamsWithMembers(): Promise<TeamWithMembers[]> {
   const query = `
-    SELECT 
-      t.id, t.name, t.description, t.department, t.parent_id, 
-      t.created_at, t.updated_at,
-      tm.id as member_id, tm.user_id, tm.team_id, tm.role, 
-      tm.is_active, tm.joined_at, tm.updated_at as member_updated_at,
-      u.name as user_name, u.email as user_email, 
-      u.created_at as user_created_at, u.updated_at as user_updated_at
-    FROM teams t
-    LEFT JOIN team_members tm ON t.id = tm.team_id AND tm.is_active = true
-    LEFT JOIN users u ON tm.user_id = u.id
-    ORDER BY t.name, u.name
+      SELECT t.id,
+             t.name,
+             t.description,
+             t.department,
+             t.parent_id,
+             t.created_at,
+             t.updated_at,
+             tm.id         as member_id,
+             tm.user_id,
+             tm.team_id,
+             tm.role,
+             tm.is_active,
+             tm.joined_at,
+             tm.updated_at as member_updated_at,
+             u.name        as user_name,
+             u.email       as user_email,
+             u.created_at  as user_created_at,
+             u.updated_at  as user_updated_at
+      FROM teams t
+               LEFT JOIN team_members tm ON t.id = tm.team_id AND tm.is_active = true
+               LEFT JOIN users u ON tm.user_id = u.id
+      ORDER BY t.name, u.name
   `;
-  
+
   const result = await pool.query(query);
   const teamsMap = new Map<number, TeamWithMembers>();
-  
+
   for (const row of result.rows) {
     if (!teamsMap.has(row.id)) {
       teamsMap.set(row.id, {
@@ -140,13 +147,13 @@ export async function getTeamsWithMembers(): Promise<TeamWithMembers[]> {
         children: []
       });
     }
-    
+
     const team = teamsMap.get(row.id)!;
     if (row.member_id) {
       team.members.push(rowToTeamMemberWithUser(row));
     }
   }
-  
+
   return Array.from(teamsMap.values());
 }
 
@@ -154,13 +161,13 @@ export async function getTeamsHierarchy(): Promise<TeamWithMembers[]> {
   const teamsWithMembers = await getTeamsWithMembers();
   const teamsMap = new Map<number, TeamWithMembers>();
   const rootTeams: TeamWithMembers[] = [];
-  
+
   // Create map and add path information
   for (const team of teamsWithMembers) {
     team.children = [];
     teamsMap.set(team.id, team);
   }
-  
+
   // First pass: identify root teams and build basic hierarchy
   for (const team of teamsWithMembers) {
     if (team.parent_id === null) {
@@ -172,7 +179,7 @@ export async function getTeamsHierarchy(): Promise<TeamWithMembers[]> {
       }
     }
   }
-  
+
   // Second pass: calculate paths recursively
   function calculatePaths(teams: TeamWithMembers[], parentPath = '') {
     teams.forEach(team => {
@@ -183,19 +190,19 @@ export async function getTeamsHierarchy(): Promise<TeamWithMembers[]> {
       }
     });
   }
-  
+
   calculatePaths(rootTeams);
-  
+
   // Function to collect all members from a team and its descendants
   function collectAllMembers(team: TeamWithMembers): TeamMemberWithUser[] {
     const allMembers = new Map<string, TeamMemberWithUser>();
-    
+
     // Add direct members
     team.members.forEach(member => {
       const key = `${member.user_id}`;
       allMembers.set(key, member);
     });
-    
+
     // Recursively add members from child teams
     if (team.children) {
       team.children.forEach(child => {
@@ -215,15 +222,15 @@ export async function getTeamsHierarchy(): Promise<TeamWithMembers[]> {
         });
       });
     }
-    
+
     return Array.from(allMembers.values());
   }
-  
+
   // Update each team with inherited members
   teamsMap.forEach(team => {
     team.members = collectAllMembers(team);
   });
-  
+
   // Sort children recursively
   function sortChildren(teams: TeamWithMembers[]): void {
     teams.sort((a, b) => a.name.localeCompare(b.name));
@@ -233,26 +240,28 @@ export async function getTeamsHierarchy(): Promise<TeamWithMembers[]> {
       }
     });
   }
-  
+
   sortChildren(rootTeams);
   return rootTeams;
 }
 
 export async function createTeam(input: CreateTeamInput): Promise<Team> {
   const query = `
-    INSERT INTO teams (name, description, department, parent_id)
-    VALUES ($1, $2, $3, $4)
-    RETURNING *
+      INSERT INTO teams (name, description, department, parent_id)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *
   `;
   const values = [input.name, input.description || null, input.department || null, input.parent_id || null];
-  
+
   try {
     const result = await pool.query(query, values);
     return rowToTeam(result.rows[0]);
-  } catch (error: any) {
-    // Handle database constraint violations with user-friendly messages
-    if (error.message && error.message.includes('circular reference')) {
-      throw new Error('Cannot create team: the selected parent would create a circular reference in the team hierarchy');
+  } catch (error) {
+    if (error instanceof DatabaseError) {
+      // Handle database constraint violations with user-friendly messages
+      if (error.message && error.message.includes('circular reference')) {
+        throw new Error('Cannot create team: the selected parent would create a circular reference in the team hierarchy');
+      }
     }
     // Re-throw other errors as-is
     throw error;
@@ -261,9 +270,9 @@ export async function createTeam(input: CreateTeamInput): Promise<Team> {
 
 export async function updateTeam(id: number, input: UpdateTeamInput): Promise<Team | null> {
   const setParts: string[] = [];
-  const values: any[] = [];
+  const values: SqlValue[] = [];
   let paramCount = 1;
-  
+
   if (input.name !== undefined) {
     setParts.push(`name = $${paramCount++}`);
     values.push(input.name);
@@ -280,26 +289,28 @@ export async function updateTeam(id: number, input: UpdateTeamInput): Promise<Te
     setParts.push(`parent_id = $${paramCount++}`);
     values.push(input.parent_id);
   }
-  
+
   if (setParts.length === 0) {
     return await getTeamById(id);
   }
-  
+
   values.push(id);
   const query = `
-    UPDATE teams 
-    SET ${setParts.join(', ')}
-    WHERE id = $${paramCount}
+      UPDATE teams
+      SET ${setParts.join(', ')}
+      WHERE id = $${paramCount}
     RETURNING *
   `;
-  
+
   try {
     const result = await pool.query(query, values);
     return result.rows.length > 0 ? rowToTeam(result.rows[0]) : null;
-  } catch (error: any) {
-    // Handle database constraint violations with user-friendly messages
-    if (error.message && error.message.includes('circular reference')) {
-      throw new Error('Cannot set parent team: this would create a circular reference in the team hierarchy');
+  } catch (error) {
+    if (error instanceof DatabaseError) {
+      // Handle database constraint violations with user-friendly messages
+      if (error.message && error.message.includes('circular reference')) {
+        throw new Error('Cannot set parent team: this would create a circular reference in the team hierarchy');
+      }
     }
     // Re-throw other errors as-is
     throw error;
@@ -315,40 +326,52 @@ export async function deleteTeam(id: number): Promise<boolean> {
 // Team member queries
 export async function getTeamMembers(teamId: number): Promise<TeamMemberWithUser[]> {
   const query = `
-    SELECT 
-      tm.id, tm.user_id, tm.team_id, tm.role, tm.is_active, 
-      tm.joined_at, tm.updated_at,
-      u.name as user_name, u.email as user_email,
-      u.created_at as user_created_at, u.updated_at as user_updated_at
-    FROM team_members tm
-    JOIN users u ON tm.user_id = u.id
-    WHERE tm.team_id = $1
-    ORDER BY u.name
+      SELECT tm.id,
+             tm.user_id,
+             tm.team_id,
+             tm.role,
+             tm.is_active,
+             tm.joined_at,
+             tm.updated_at,
+             u.name       as user_name,
+             u.email      as user_email,
+             u.created_at as user_created_at,
+             u.updated_at as user_updated_at
+      FROM team_members tm
+               JOIN users u ON tm.user_id = u.id
+      WHERE tm.team_id = $1
+      ORDER BY u.name
   `;
-  
+
   const result = await pool.query(query, [teamId]);
   return result.rows.map(rowToTeamMemberWithUser);
 }
 
 export async function addTeamMember(input: CreateTeamMemberInput): Promise<TeamMemberWithUser> {
   const query = `
-    INSERT INTO team_members (user_id, team_id, role, is_active)
-    VALUES ($1, $2, $3, $4)
-    RETURNING *
+      INSERT INTO team_members (user_id, team_id, role, is_active)
+      VALUES ($1, $2, $3, $4)
+      RETURNING *
   `;
   const values = [input.user_id, input.team_id, input.role || 'member', input.is_active !== false];
   const result = await pool.query(query, values);
-  
+
   // Get the full member with user info
   const memberQuery = `
-    SELECT 
-      tm.id, tm.user_id, tm.team_id, tm.role, tm.is_active, 
-      tm.joined_at, tm.updated_at,
-      u.name as user_name, u.email as user_email,
-      u.created_at as user_created_at, u.updated_at as user_updated_at
-    FROM team_members tm
-    JOIN users u ON tm.user_id = u.id
-    WHERE tm.id = $1
+      SELECT tm.id,
+             tm.user_id,
+             tm.team_id,
+             tm.role,
+             tm.is_active,
+             tm.joined_at,
+             tm.updated_at,
+             u.name       as user_name,
+             u.email      as user_email,
+             u.created_at as user_created_at,
+             u.updated_at as user_updated_at
+      FROM team_members tm
+               JOIN users u ON tm.user_id = u.id
+      WHERE tm.id = $1
   `;
   const memberResult = await pool.query(memberQuery, [result.rows[0].id]);
   return rowToTeamMemberWithUser(memberResult.rows[0]);
@@ -356,9 +379,9 @@ export async function addTeamMember(input: CreateTeamMemberInput): Promise<TeamM
 
 export async function updateTeamMember(id: number, input: UpdateTeamMemberInput): Promise<TeamMemberWithUser | null> {
   const setParts: string[] = [];
-  const values: any[] = [];
+  const values: SqlValue[] = [];
   let paramCount = 1;
-  
+
   if (input.role !== undefined) {
     setParts.push(`role = $${paramCount++}`);
     values.push(input.role);
@@ -367,32 +390,38 @@ export async function updateTeamMember(id: number, input: UpdateTeamMemberInput)
     setParts.push(`is_active = $${paramCount++}`);
     values.push(input.is_active);
   }
-  
+
   if (setParts.length === 0) {
     return null;
   }
-  
+
   values.push(id);
   const query = `
-    UPDATE team_members 
-    SET ${setParts.join(', ')}
-    WHERE id = $${paramCount}
+      UPDATE team_members
+      SET ${setParts.join(', ')}
+      WHERE id = $${paramCount}
     RETURNING *
   `;
-  
+
   const result = await pool.query(query, values);
   if (result.rows.length === 0) return null;
-  
+
   // Get the full member with user info
   const memberQuery = `
-    SELECT 
-      tm.id, tm.user_id, tm.team_id, tm.role, tm.is_active, 
-      tm.joined_at, tm.updated_at,
-      u.name as user_name, u.email as user_email,
-      u.created_at as user_created_at, u.updated_at as user_updated_at
-    FROM team_members tm
-    JOIN users u ON tm.user_id = u.id
-    WHERE tm.id = $1
+      SELECT tm.id,
+             tm.user_id,
+             tm.team_id,
+             tm.role,
+             tm.is_active,
+             tm.joined_at,
+             tm.updated_at,
+             u.name       as user_name,
+             u.email      as user_email,
+             u.created_at as user_created_at,
+             u.updated_at as user_updated_at
+      FROM team_members tm
+               JOIN users u ON tm.user_id = u.id
+      WHERE tm.id = $1
   `;
   const memberResult = await pool.query(memberQuery, [result.rows[0].id]);
   return rowToTeamMemberWithUser(memberResult.rows[0]);

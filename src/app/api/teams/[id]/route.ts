@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTeamById, updateTeam, deleteTeam } from '@/lib/queries';
-import { UpdateTeamInput, ApiResponse } from '@/types';
+import {UpdateTeamInput, ApiResponse, MessagePayload, Team} from '@/types';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-export async function GET(request: NextRequest, props: RouteParams): Promise<NextResponse<ApiResponse<any>>> {
+export async function GET(request: NextRequest, props: RouteParams): Promise<NextResponse<ApiResponse<Team>>> {
   const params = await props.params;
   try {
     const id = parseInt(params.id);
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest, props: RouteParams): Promise<Nex
   }
 }
 
-export async function PUT(request: NextRequest, props: RouteParams): Promise<NextResponse<ApiResponse<any>>> {
+export async function PUT(request: NextRequest, props: RouteParams): Promise<NextResponse<ApiResponse<Team>>> {
   const params = await props.params;
   try {
     const id = parseInt(params.id);
@@ -79,7 +79,7 @@ export async function PUT(request: NextRequest, props: RouteParams): Promise<Nex
   }
 }
 
-export async function DELETE(request: NextRequest, props: RouteParams): Promise<NextResponse<ApiResponse<any>>> {
+export async function DELETE(request: NextRequest, props: RouteParams): Promise<NextResponse<ApiResponse<MessagePayload>>> {
   const params = await props.params;
   try {
     const id = parseInt(params.id);
