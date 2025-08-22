@@ -26,6 +26,7 @@ export interface Team {
   parent_id: number | null;
   created_at: Date;
   updated_at: Date;
+  path_text: string | null;
 }
 
 export interface TeamWithMembers extends Team {
@@ -95,6 +96,7 @@ export interface TeamRow {
   parent_id: number | null;
   created_at: string;
   updated_at: string;
+  path_text: string | null;
 }
 
 export interface TeamMemberRow {

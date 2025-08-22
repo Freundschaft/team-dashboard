@@ -237,7 +237,7 @@ export default function TeamEditForm({ teamId }: TeamEditFormProps) {
                   <option value="">No parent team</option>
                   {validParents.map(parentTeam => (
                     <option key={parentTeam.id} value={parentTeam.id}>
-                      {parentTeam.name}
+                      {parentTeam.path_text ?? parentTeam.name}
                     </option>
                   ))}
                 </select>

@@ -17,7 +17,7 @@ export async function GET(request: NextRequest, props: RouteParams): Promise<Nex
       }, { status: 400 });
     }
     
-    const validParents = await getAllTeams();
+    const validParents = await getValidParentTeams(id);
     
     return NextResponse.json({
       success: true,

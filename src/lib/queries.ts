@@ -22,7 +22,8 @@ function rowToTeam(row: TeamRow): Team {
     department: row.department,
     parent_id: row.parent_id,
     created_at: new Date(row.created_at),
-    updated_at: new Date(row.updated_at)
+    updated_at: new Date(row.updated_at),
+    path_text: row.path_text,
   };
 }
 
@@ -55,24 +56,52 @@ export async function getAllTeams(): Promise<Team[]> {
 
 export async function getValidParentTeams(teamId: number): Promise<Team[]> {
   const query = `
-    WITH RECURSIVE team_descendants AS (
-      -- Base case: the team itself
-      SELECT id, parent_id, 0 as level
-      FROM teams 
-      WHERE id = $1
-      
-      UNION ALL
-      
-      -- Recursive case: find children
-      SELECT t.id, t.parent_id, td.level + 1
+      WITH RECURSIVE
+          team_descendants AS (
+              -- the chosen team and all its descendants
+              SELECT id, parent_id, 0 AS level
+              FROM teams
+              WHERE id = $1
+              UNION ALL
+              SELECT t.id, t.parent_id, td.level + 1
+              FROM teams t
+                       JOIN team_descendants td ON t.parent_id = td.id
+          ),
+          tree AS (
+              -- build full breadcrumbs from roots
+              SELECT
+                  t.id,
+                  t.parent_id,
+                  t.name,
+                  ARRAY[t.name::text] AS path_arr,   -- root carries its own name
+                  1 AS depth
+              FROM teams t
+              WHERE t.parent_id IS NULL
+              UNION ALL
+              SELECT
+                  c.id,
+                  c.parent_id,
+                  c.name,
+                  tree.path_arr || c.name::text,
+                  tree.depth + 1
+              FROM teams c
+                       JOIN tree ON c.parent_id = tree.id
+          )
+      SELECT
+          t.*,
+          CASE
+              WHEN tr.parent_id IS NULL THEN tr.name                          -- empty for roots
+              ELSE array_to_string(tr.path_arr, ' > ')                   -- e.g. "Root > Child > Grandchild"
+              END AS path_text,
+          tr.path_arr,
+          tr.depth
       FROM teams t
-      INNER JOIN team_descendants td ON t.parent_id = td.id
-    )
-    SELECT t.* 
-    FROM teams t
-    WHERE t.id != $1  -- Exclude self
-      AND t.id NOT IN (SELECT id FROM team_descendants WHERE level > 0)  -- Exclude descendants
-    ORDER BY t.name
+               JOIN tree tr ON tr.id = t.id
+      WHERE t.id <> $1
+        AND t.id NOT IN (
+          SELECT id FROM team_descendants WHERE level > 0            -- exclude descendants of $1
+      )
+      ORDER BY t.name;
   `;
   
   const result = await pool.query(query, [teamId]);
