@@ -121,9 +121,10 @@ export async function getTeamsHierarchy(): Promise<TeamWithMembers[]> {
   // Second pass: calculate paths recursively
   function calculatePaths(teams: TeamWithMembers[], parentPath = '') {
     teams.forEach(team => {
-      team.path = parentPath ? `${parentPath} > ${team.name}` : team.name;
+      // Only set path if there's a parent (avoid redundant "Path: TeamName" for root teams)
+      team.path = parentPath ? `${parentPath} > ${team.name}` : undefined;
       if (team.children && team.children.length > 0) {
-        calculatePaths(team.children, team.path);
+        calculatePaths(team.children, parentPath || team.name);
       }
     });
   }
