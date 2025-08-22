@@ -58,6 +58,7 @@ export interface TeamMember {
 
 export interface TeamMemberWithUser extends TeamMember {
   user: User;
+  is_direct?: boolean;
 }
 
 export interface CreateTeamMemberInput {
