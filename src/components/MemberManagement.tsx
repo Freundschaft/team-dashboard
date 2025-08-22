@@ -222,52 +222,59 @@ export default function MemberManagement({ teamId, members, onMembersChange }: M
           <p className="text-foreground/70 text-center py-4">No members in this team</p>
         ) : (
           members.map(member => (
-            <div key={member.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-foreground">{member.user.name}</span>
-                  <span className="text-sm text-foreground/60">({member.user.email})</span>
-                  {!member.is_active && (
-                    <span className="text-xs text-red-500 bg-red-100 dark:bg-red-900 px-2 py-1 rounded">
-                      Inactive
-                    </span>
-                  )}
+            <div key={member.id} className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              <div className="flex flex-col gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium text-foreground">{member.user.name}</span>
+                      {!member.is_active && (
+                        <span className="text-xs text-red-500 bg-red-100 dark:bg-red-900 px-2 py-1 rounded whitespace-nowrap">
+                          Inactive
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-sm text-foreground/60">{member.user.email}</div>
+                  </div>
                 </div>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <select
-                  value={member.role}
-                  onChange={(e) => handleUpdateMember(member.id, { role: e.target.value })}
-                  disabled={loading}
-                  className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-foreground focus:outline-none focus:ring-1 focus:ring-blue-500"
-                >
-                  {roles.map(role => (
-                    <option key={role.value} value={role.value}>
-                      {role.label}
-                    </option>
-                  ))}
-                </select>
                 
-                <button
-                  onClick={() => handleUpdateMember(member.id, { is_active: !member.is_active })}
-                  disabled={loading}
-                  className={`px-2 py-1 text-xs rounded transition-colors ${
-                    member.is_active
-                      ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 hover:bg-yellow-200 dark:hover:bg-yellow-800'
-                      : 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 hover:bg-green-200 dark:hover:bg-green-800'
-                  }`}
-                >
-                  {member.is_active ? 'Deactivate' : 'Activate'}
-                </button>
-                
-                <button
-                  onClick={() => handleRemoveMember(member.id)}
-                  disabled={loading}
-                  className="px-2 py-1 text-xs bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded hover:bg-red-200 dark:hover:bg-red-800 transition-colors"
-                >
-                  Remove
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-foreground/60">Role:</span>
+                    <select
+                      value={member.role}
+                      onChange={(e) => handleUpdateMember(member.id, { role: e.target.value })}
+                      disabled={loading}
+                      className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-foreground focus:outline-none focus:ring-1 focus:ring-blue-500 min-w-0"
+                    >
+                      {roles.map(role => (
+                        <option key={role.value} value={role.value}>
+                          {role.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  <button
+                    onClick={() => handleUpdateMember(member.id, { is_active: !member.is_active })}
+                    disabled={loading}
+                    className={`px-3 py-1 text-xs rounded transition-colors whitespace-nowrap ${
+                      member.is_active
+                        ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 hover:bg-yellow-200 dark:hover:bg-yellow-800'
+                        : 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 hover:bg-green-200 dark:hover:bg-green-800'
+                    }`}
+                  >
+                    {member.is_active ? 'Deactivate' : 'Activate'}
+                  </button>
+                  
+                  <button
+                    onClick={() => handleRemoveMember(member.id)}
+                    disabled={loading}
+                    className="px-3 py-1 text-xs bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 rounded hover:bg-red-200 dark:hover:bg-red-800 transition-colors whitespace-nowrap"
+                  >
+                    Remove
+                  </button>
+                </div>
               </div>
             </div>
           ))
