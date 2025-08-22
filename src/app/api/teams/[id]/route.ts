@@ -74,7 +74,7 @@ export async function PUT(request: NextRequest, props: RouteParams): Promise<Nex
     console.error('Error updating team:', error);
     return NextResponse.json({
       success: false,
-      error: 'Failed to update team'
+      error: `Failed to update team ${error}`
     }, { status: 500 });
   }
 }
