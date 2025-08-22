@@ -131,7 +131,7 @@ export async function getTeamsWithMembers(): Promise<TeamWithMembers[]> {
              u.created_at  as user_created_at,
              u.updated_at  as user_updated_at
       FROM teams t
-               LEFT JOIN team_members tm ON t.id = tm.team_id AND tm.is_active = true
+               LEFT JOIN team_members tm ON t.id = tm.team_id
                LEFT JOIN users u ON tm.user_id = u.id
       ORDER BY t.name, u.name
   `;
