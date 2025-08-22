@@ -31,6 +31,9 @@ const config = {
         '<rootDir>/tests/database/*.spec.ts'
       ],
       setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
+      transform: {
+        '^.+\\.(ts?|js?)$': ['babel-jest', { presets: ['next/babel'] }],
+      },
     },
   ],
   moduleDirectories: ['node_modules', '<rootDir>/src'],
