@@ -6,6 +6,7 @@ import { Team, User, TeamMemberWithUser, UpdateTeamInput } from '@/types';
 import Link from 'next/link';
 import LoadingSpinner from './LoadingSpinner';
 import MemberManagement from './MemberManagement';
+import { flattenTeams, getValidParentTeams } from '@/lib/team-utils';
 
 interface TeamEditFormProps {
   teamId: number;
@@ -129,30 +130,6 @@ export default function TeamEditForm({ teamId }: TeamEditFormProps) {
     }
   };
 
-  const flattenTeams = (teamsList: any[]): Team[] => {
-    const result: Team[] = [];
-    
-    const flatten = (teams: any[]) => {
-      teams.forEach(team => {
-        result.push({
-          id: team.id,
-          name: team.name,
-          description: team.description,
-          department: team.department,
-          parent_id: team.parent_id,
-          created_at: new Date(team.created_at),
-          updated_at: new Date(team.updated_at)
-        });
-        
-        if (team.children && team.children.length > 0) {
-          flatten(team.children);
-        }
-      });
-    };
-    
-    flatten(teamsList);
-    return result;
-  };
 
   if (loading) {
     return (
@@ -178,7 +155,7 @@ export default function TeamEditForm({ teamId }: TeamEditFormProps) {
   }
 
   const flatTeams = flattenTeams(teams);
-  const availableParents = flatTeams.filter(t => t.id !== teamId);
+  const availableParents = getValidParentTeams(teamId, flatTeams, teams);
 
   return (
     <div className="max-w-4xl mx-auto">

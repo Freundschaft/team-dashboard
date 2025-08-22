@@ -12,6 +12,7 @@ import {
   TeamRow,
   TeamMemberRow
 } from '@/types';
+import { wouldCreateCircularReference } from './team-utils';
 
 // Helper function to convert database row to Team object
 function rowToTeam(row: TeamRow): Team {
@@ -184,6 +185,8 @@ export async function getTeamsHierarchy(): Promise<TeamWithMembers[]> {
 }
 
 export async function createTeam(input: CreateTeamInput): Promise<Team> {
+  // For new teams, we just need to make sure the parent exists if specified
+  // No circular reference check needed since this is a new team
   const query = `
     INSERT INTO teams (name, description, department, parent_id)
     VALUES ($1, $2, $3, $4)
@@ -195,6 +198,15 @@ export async function createTeam(input: CreateTeamInput): Promise<Team> {
 }
 
 export async function updateTeam(id: number, input: UpdateTeamInput): Promise<Team | null> {
+  // Check for circular reference if parent_id is being updated
+  if (input.parent_id !== undefined && input.parent_id !== null) {
+    const teams = await getAllTeams();
+    const wouldCreateCircle = wouldCreateCircularReference(id, input.parent_id, teams);
+    if (wouldCreateCircle) {
+      throw new Error('Cannot set parent: would create circular reference');
+    }
+  }
+
   const setParts: string[] = [];
   const values: any[] = [];
   let paramCount = 1;
