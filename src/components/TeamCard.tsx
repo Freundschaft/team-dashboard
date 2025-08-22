@@ -61,7 +61,7 @@ export default function TeamCard({ team, depth = 0 }: TeamCardProps) {
             </h4>
             <div className="flex flex-wrap gap-2">
               {team.members.map(member => {
-                const isInherited = member.id === -1;
+                const isInherited = member.is_direct === false;
                 return (
                   <div
                     key={`${member.team_id}-${member.user_id}`}

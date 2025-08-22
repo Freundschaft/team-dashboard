@@ -166,7 +166,6 @@ members_resolved AS (
     FROM closure c
              JOIN team_members tm ON tm.team_id = c.descendant_id
              JOIN users u ON u.id = tm.user_id
-    WHERE tm.is_active = TRUE
 ),
 
 -- Prefer direct membership; else closest descendant (smallest depth, newest joined_at last tiebreaker)
@@ -225,7 +224,7 @@ picked AS (
                                   'user_created_at',  p.user_created_at,
                                   'user_updated_at',  p.user_updated_at
                           )
-                          ORDER BY p.user_name
+                          ORDER BY p.is_active DESC, p.is_direct DESC, p.user_name ASC
                                    ) FILTER (WHERE p.user_id IS NOT NULL),
                           '[]'::jsonb
           ) AS members
@@ -237,24 +236,46 @@ picked AS (
   `;
 
   const result = await pool.query(query);
-  const teamsMap = new Map<number, TeamWithMembers>();
+  
+  return result.rows.map(row => {
+    const membersJson = row.members || [];
+    const members: TeamMemberWithUser[] = membersJson.map((memberData: {
+      id: number;
+      user_id: number;
+      team_id: number;
+      role: string;
+      is_active: boolean;
+      joined_at: string;
+      updated_at: string;
+      is_direct: boolean;
+      user_name: string;
+      user_email: string;
+      user_created_at: string;
+      user_updated_at: string;
+    }) => ({
+      id: memberData.id,
+      user_id: memberData.user_id,
+      team_id: memberData.team_id,
+      role: memberData.role,
+      is_active: memberData.is_active,
+      joined_at: new Date(memberData.joined_at),
+      updated_at: new Date(memberData.updated_at),
+      is_direct: memberData.is_direct,
+      user: {
+        id: memberData.user_id,
+        name: memberData.user_name,
+        email: memberData.user_email,
+        created_at: new Date(memberData.user_created_at),
+        updated_at: new Date(memberData.user_updated_at)
+      }
+    }));
 
-  for (const row of result.rows) {
-    if (!teamsMap.has(row.id)) {
-      teamsMap.set(row.id, {
-        ...rowToTeam(row),
-        members: [],
-        children: []
-      });
-    }
-
-    const team = teamsMap.get(row.id)!;
-    if (row.member_id) {
-      team.members.push(rowToTeamMemberWithUser(row));
-    }
-  }
-
-  return Array.from(teamsMap.values());
+    return {
+      ...rowToTeam(row),
+      members,
+      children: []
+    };
+  });
 }
 
 export async function getTeamsHierarchy(): Promise<TeamWithMembers[]> {
@@ -262,13 +283,13 @@ export async function getTeamsHierarchy(): Promise<TeamWithMembers[]> {
   const teamsMap = new Map<number, TeamWithMembers>();
   const rootTeams: TeamWithMembers[] = [];
 
-  // Create map and add path information
+  // Create map and initialize children arrays
   for (const team of teamsWithMembers) {
     team.children = [];
     teamsMap.set(team.id, team);
   }
 
-  // First pass: identify root teams and build basic hierarchy
+  // Build hierarchy by connecting parent-child relationships
   for (const team of teamsWithMembers) {
     if (team.parent_id === null) {
       rootTeams.push(team);
@@ -279,44 +300,6 @@ export async function getTeamsHierarchy(): Promise<TeamWithMembers[]> {
       }
     }
   }
-
-  // Function to collect all members from a team and its descendants
-  function collectAllMembers(team: TeamWithMembers): TeamMemberWithUser[] {
-    const allMembers = new Map<string, TeamMemberWithUser>();
-
-    // Add direct members
-    team.members.forEach(member => {
-      const key = `${member.user_id}`;
-      allMembers.set(key, member);
-    });
-
-    // Recursively add members from child teams
-    if (team.children) {
-      team.children.forEach(child => {
-        const childMembers = collectAllMembers(child);
-        childMembers.forEach(member => {
-          const key = `${member.user_id}`;
-          // Only add if user is not already a member (direct membership takes precedence)
-          if (!allMembers.has(key)) {
-            allMembers.set(key, {
-              ...member,
-              // Create a virtual membership record for inherited members
-              id: -1, // Use negative ID to indicate inherited membership
-              team_id: team.id,
-              role: member.role, // Keep original role from child team
-            });
-          }
-        });
-      });
-    }
-
-    return Array.from(allMembers.values());
-  }
-
-  // Update each team with inherited members
-  teamsMap.forEach(team => {
-    team.members = collectAllMembers(team);
-  });
 
   // Sort children recursively
   function sortChildren(teams: TeamWithMembers[]): void {
