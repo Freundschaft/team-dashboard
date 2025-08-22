@@ -112,58 +112,128 @@ export async function getTeamById(id: number): Promise<Team | null> {
 
 export async function getTeamsWithMembers(): Promise<TeamWithMembers[]> {
   const query = `
-      WITH RECURSIVE tree AS (
-          -- roots carry their own name in the path array
-          SELECT t.id,
-                 t.parent_id,
-                 t.name,
-                 ARRAY [t.name::text] AS path_arr,
-                 1                    AS depth
-          FROM teams t
-          WHERE t.parent_id IS NULL
+      WITH RECURSIVE
+-- Build breadcrumbs for the whole forest
+tree AS (
+    -- roots carry their own name in the path array
+    SELECT t.id,
+           t.parent_id,
+           t.name,
+           ARRAY[t.name::text] AS path_arr,
+           1 AS depth
+    FROM teams t
+    WHERE t.parent_id IS NULL
 
-          UNION ALL
+    UNION ALL
 
-          -- children append to the parent's path
-          SELECT c.id,
-                 c.parent_id,
-                 c.name,
-                 tree.path_arr || c.name::text,
-                 tree.depth + 1
-          FROM teams c
-                   JOIN tree ON c.parent_id = tree.id)
+    -- children append to the parent's path
+    SELECT c.id,
+           c.parent_id,
+           c.name,
+           tree.path_arr || c.name::text,
+           tree.depth + 1
+    FROM teams c
+             JOIN tree ON c.parent_id = tree.id
+),
 
-      SELECT t.id,
-             t.name,
-             t.description,
-             t.department,
-             t.parent_id,
-             t.created_at,
-             t.updated_at,
-             -- derived tree fields
-             CASE
-                 WHEN tr.parent_id IS NULL THEN tr.name
-                 ELSE array_to_string(tr.path_arr, ' > ')
-                 END       AS path_text,
-             tr.path_arr,
-             tr.depth,
+-- Transitive closure of the team tree (ancestor -> descendant)
+closure AS (
+    SELECT t.id AS ancestor_id, t.id AS descendant_id, 0 AS depth
+    FROM teams t
+    UNION ALL
+    SELECT c.ancestor_id, ch.id, c.depth + 1
+    FROM teams ch
+             JOIN closure c ON ch.parent_id = c.descendant_id
+),
 
-             tm.id         as member_id,
-             tm.user_id,
-             tm.team_id,
-             tm.role,
-             tm.is_active,
-             tm.joined_at,
-             tm.updated_at as member_updated_at,
-             u.name        as user_name,
-             u.email       as user_email,
-             u.created_at  as user_created_at,
-             u.updated_at  as user_updated_at
+-- Attach members from descendant teams to each ancestor
+members_resolved AS (
+    SELECT
+        c.ancestor_id AS team_id,             -- where member is visible
+        tm.user_id,
+        CASE WHEN c.depth = 0 THEN tm.id ELSE -1 END AS id,  -- -1 for inherited
+        CASE WHEN c.depth = 0 THEN tm.team_id ELSE c.ancestor_id END AS team_id_origin,
+        tm.role,
+        tm.is_active,
+        tm.joined_at,
+        tm.updated_at,
+        (c.depth = 0) AS is_direct,
+        c.depth,
+        u.name  AS user_name,
+        u.email AS user_email,
+        u.created_at AS user_created_at,
+        u.updated_at AS user_updated_at
+    FROM closure c
+             JOIN team_members tm ON tm.team_id = c.descendant_id
+             JOIN users u ON u.id = tm.user_id
+    WHERE tm.is_active = TRUE
+),
+
+-- Prefer direct membership; else closest descendant (smallest depth, newest joined_at last tiebreaker)
+picked AS (
+    SELECT DISTINCT ON (team_id, user_id)
+        team_id,
+        user_id,
+        id,
+        team_id_origin,
+        role,
+        is_active,
+        joined_at,
+        updated_at,
+        is_direct,
+        depth,
+        user_name,
+        user_email,
+        user_created_at,
+        user_updated_at
+    FROM members_resolved
+    ORDER BY team_id, user_id, is_direct DESC, depth ASC, joined_at DESC
+)
+
+      SELECT
+          t.id,
+          t.name,
+          t.description,
+          t.department,
+          t.parent_id,
+          t.created_at,
+          t.updated_at,
+
+          -- derived tree fields
+          CASE
+              WHEN tr.parent_id IS NULL THEN tr.name
+              ELSE array_to_string(tr.path_arr, ' > ')
+              END AS path_text,
+          tr.path_arr,
+          tr.depth,
+
+          -- aggregated members (direct + inherited, with direct preferred)
+          COALESCE(
+                          jsonb_agg(
+                          jsonb_build_object(
+                                  'id',               p.id,              -- membership id (or -1 if inherited)
+                                  'user_id',          p.user_id,
+                                  'team_id',          p.team_id,         -- ancestor where visible
+                                  'team_id_origin',   p.team_id_origin,  -- origin of the membership
+                                  'role',             p.role,
+                                  'is_active',        p.is_active,
+                                  'joined_at',        p.joined_at,
+                                  'updated_at',       p.updated_at,
+                                  'is_direct',        p.is_direct,
+                                  'user_name',        p.user_name,
+                                  'user_email',       p.user_email,
+                                  'user_created_at',  p.user_created_at,
+                                  'user_updated_at',  p.user_updated_at
+                          )
+                          ORDER BY p.user_name
+                                   ) FILTER (WHERE p.user_id IS NOT NULL),
+                          '[]'::jsonb
+          ) AS members
       FROM teams t
                JOIN tree tr ON tr.id = t.id
-               LEFT JOIN team_members tm ON t.id = tm.team_id
-               LEFT JOIN users u ON tm.user_id = u.id
-      ORDER BY t.name, u.name
+               LEFT JOIN picked p ON p.team_id = t.id
+      GROUP BY t.id, tr.parent_id, tr.path_arr, tr.depth, tr.name
+      ORDER BY path_text, t.name;
   `;
 
   const result = await pool.query(query);
