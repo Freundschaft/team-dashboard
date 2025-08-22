@@ -6,7 +6,6 @@ import { Team, User, TeamMemberWithUser, UpdateTeamInput } from '@/types';
 import Link from 'next/link';
 import LoadingSpinner from './LoadingSpinner';
 import MemberManagement from './MemberManagement';
-import { flattenTeams, getValidParentTeams } from '@/lib/team-utils';
 
 interface TeamEditFormProps {
   teamId: number;
@@ -15,7 +14,7 @@ interface TeamEditFormProps {
 export default function TeamEditForm({ teamId }: TeamEditFormProps) {
   const router = useRouter();
   const [team, setTeam] = useState<Team | null>(null);
-  const [teams, setTeams] = useState<Team[]>([]);
+  const [validParents, setValidParents] = useState<Team[]>([]);
   const [members, setMembers] = useState<TeamMemberWithUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -36,20 +35,20 @@ export default function TeamEditForm({ teamId }: TeamEditFormProps) {
     try {
       setLoading(true);
       
-      const [teamResponse, teamsResponse, membersResponse] = await Promise.all([
+      const [teamResponse, validParentsResponse, membersResponse] = await Promise.all([
         fetch(`/api/teams/${teamId}`),
-        fetch('/api/teams'),
+        fetch(`/api/teams/${teamId}/valid-parents`),
         fetch(`/api/teams/${teamId}/members`)
       ]);
       
       const teamData = await teamResponse.json();
-      const teamsData = await teamsResponse.json();
+      const validParentsData = await validParentsResponse.json();
       const membersData = await membersResponse.json();
       
-      if (teamData.success && teamsData.success && membersData.success) {
+      if (teamData.success && validParentsData.success && membersData.success) {
         const teamInfo = teamData.data;
         setTeam(teamInfo);
-        setTeams(teamsData.data.teams.flat());
+        setValidParents(validParentsData.data);
         setMembers(membersData.data);
         
         setFormData({
@@ -154,8 +153,6 @@ export default function TeamEditForm({ teamId }: TeamEditFormProps) {
     );
   }
 
-  const flatTeams = flattenTeams(teams);
-  const availableParents = getValidParentTeams(teamId, flatTeams, teams);
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -238,7 +235,7 @@ export default function TeamEditForm({ teamId }: TeamEditFormProps) {
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">No parent team</option>
-                  {availableParents.map(parentTeam => (
+                  {validParents.map(parentTeam => (
                     <option key={parentTeam.id} value={parentTeam.id}>
                       {parentTeam.name}
                     </option>
