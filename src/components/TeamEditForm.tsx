@@ -142,7 +142,7 @@ export default function TeamEditForm({ teamId }: TeamEditFormProps) {
     return (
       <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
         <h3 className="text-red-800 dark:text-red-400 font-medium mb-2">Team not found</h3>
-        <p className="text-red-600 dark:text-red-300">The team you're looking for doesn't exist.</p>
+        <p className="text-red-600 dark:text-red-300">The team you&#39;re looking for doesn&#39;t exist.</p>
         <Link
           href="/"
           className="mt-4 inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
