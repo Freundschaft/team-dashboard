@@ -37,8 +37,8 @@ export default function TeamCard({ team, depth = 0 }: TeamCardProps) {
               )}
             </div>
             
-            {team.path && (
-              <p className="text-sm text-foreground/60 mb-2">Path: {team.path}</p>
+            {team.parent_id && team.path_text && (
+              <p className="text-sm text-foreground/60 mb-2">Path: {team.path_text}</p>
             )}
             
             {team.description && (

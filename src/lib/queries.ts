@@ -112,6 +112,27 @@ export async function getTeamById(id: number): Promise<Team | null> {
 
 export async function getTeamsWithMembers(): Promise<TeamWithMembers[]> {
   const query = `
+      WITH RECURSIVE tree AS (
+          -- roots carry their own name in the path array
+          SELECT t.id,
+                 t.parent_id,
+                 t.name,
+                 ARRAY [t.name::text] AS path_arr,
+                 1                    AS depth
+          FROM teams t
+          WHERE t.parent_id IS NULL
+
+          UNION ALL
+
+          -- children append to the parent's path
+          SELECT c.id,
+                 c.parent_id,
+                 c.name,
+                 tree.path_arr || c.name::text,
+                 tree.depth + 1
+          FROM teams c
+                   JOIN tree ON c.parent_id = tree.id)
+
       SELECT t.id,
              t.name,
              t.description,
@@ -119,6 +140,14 @@ export async function getTeamsWithMembers(): Promise<TeamWithMembers[]> {
              t.parent_id,
              t.created_at,
              t.updated_at,
+             -- derived tree fields
+             CASE
+                 WHEN tr.parent_id IS NULL THEN tr.name
+                 ELSE array_to_string(tr.path_arr, ' > ')
+                 END       AS path_text,
+             tr.path_arr,
+             tr.depth,
+
              tm.id         as member_id,
              tm.user_id,
              tm.team_id,
@@ -131,6 +160,7 @@ export async function getTeamsWithMembers(): Promise<TeamWithMembers[]> {
              u.created_at  as user_created_at,
              u.updated_at  as user_updated_at
       FROM teams t
+               JOIN tree tr ON tr.id = t.id
                LEFT JOIN team_members tm ON t.id = tm.team_id
                LEFT JOIN users u ON tm.user_id = u.id
       ORDER BY t.name, u.name
@@ -179,19 +209,6 @@ export async function getTeamsHierarchy(): Promise<TeamWithMembers[]> {
       }
     }
   }
-
-  // Second pass: calculate paths recursively
-  function calculatePaths(teams: TeamWithMembers[], parentPath = '') {
-    teams.forEach(team => {
-      // Only set path if there's a parent (avoid redundant "Path: TeamName" for root teams)
-      team.path = parentPath ? `${parentPath} > ${team.name}` : undefined;
-      if (team.children && team.children.length > 0) {
-        calculatePaths(team.children, parentPath || team.name);
-      }
-    });
-  }
-
-  calculatePaths(rootTeams);
 
   // Function to collect all members from a team and its descendants
   function collectAllMembers(team: TeamWithMembers): TeamMemberWithUser[] {
