@@ -69,7 +69,13 @@ export default function TeamCard({ team, depth = 0 }: TeamCardProps) {
                       isInherited 
                         ? 'bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800' 
                         : 'bg-gray-50 dark:bg-gray-700'
-                    }`}
+                    }
+                    ${
+                      !member.is_active
+                        ? 'bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800'
+                        : ''
+                    }
+                    `}
                   >
                     <span className="text-sm text-foreground">{member.user.name}</span>
                     <span className="text-xs text-foreground/60 capitalize">
