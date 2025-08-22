@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { User, TeamMemberWithUser, CreateTeamMemberInput, UpdateTeamMemberInput } from '@/types';
+import { User, TeamMemberWithUser, CreateTeamMemberInput, UpdateTeamMemberInput, CreateUserInput } from '@/types';
 
 interface MemberManagementProps {
   teamId: number;
@@ -14,9 +14,16 @@ export default function MemberManagement({ teamId, members, onMembersChange }: M
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [addMode, setAddMode] = useState<'existing' | 'new'>('existing');
   
   const [newMember, setNewMember] = useState({
     user_id: '',
+    role: 'member'
+  });
+
+  const [newUser, setNewUser] = useState({
+    name: '',
+    email: '',
     role: 'member'
   });
 
@@ -72,6 +79,67 @@ export default function MemberManagement({ teamId, members, onMembersChange }: M
       }
     } catch (err) {
       setError(`Failed to add member ${err}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateAndAddUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!newUser.name || !newUser.email) return;
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // First create the user
+      const userResponse = await fetch('/api/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: newUser.name,
+          email: newUser.email
+        }),
+      });
+      
+      const userData = await userResponse.json();
+      
+      if (!userData.success) {
+        setError(userData.error || 'Failed to create user');
+        return;
+      }
+      
+      // Then add them to the team
+      const memberData: CreateTeamMemberInput = {
+        user_id: userData.data.id,
+        team_id: teamId,
+        role: newUser.role,
+        is_active: true
+      };
+      
+      const memberResponse = await fetch(`/api/teams/${teamId}/members`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(memberData),
+      });
+      
+      const memberData2 = await memberResponse.json();
+      
+      if (memberData2.success) {
+        onMembersChange([...members, memberData2.data]);
+        setUsers([...users, userData.data]); // Update users list
+        setNewUser({ name: '', email: '', role: 'member' });
+        setShowAddForm(false);
+      } else {
+        setError(memberData2.error || 'Failed to add member');
+      }
+    } catch (err) {
+      setError(`Failed to create and add user ${err}`);
     } finally {
       setLoading(false);
     }
@@ -150,7 +218,16 @@ export default function MemberManagement({ teamId, members, onMembersChange }: M
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold text-foreground">Direct Team Members</h2>
         <button
-          onClick={() => setShowAddForm(!showAddForm)}
+          onClick={() => {
+            setShowAddForm(!showAddForm);
+            if (showAddForm) {
+              // Reset forms when closing
+              setNewMember({ user_id: '', role: 'member' });
+              setNewUser({ name: '', email: '', role: 'member' });
+              setAddMode('existing');
+              setError(null);
+            }
+          }}
           className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
         >
           {showAddForm ? 'Cancel' : 'Add Member'}
@@ -164,57 +241,149 @@ export default function MemberManagement({ teamId, members, onMembersChange }: M
       )}
 
       {showAddForm && (
-        <form onSubmit={handleAddMember} className="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-          <h3 className="text-sm font-medium text-foreground mb-3">Add New Member</h3>
-          
-          <div className="space-y-3">
-            <div>
-              <label htmlFor="user_select" className="block text-sm font-medium text-foreground mb-1">
-                User
-              </label>
-              <select
-                id="user_select"
-                required
-                value={newMember.user_id}
-                onChange={(e) => setNewMember(prev => ({ ...prev, user_id: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+        <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+          <div className="flex items-center gap-4 mb-4">
+            <h3 className="text-sm font-medium text-foreground">Add New Member</h3>
+            <div className="flex bg-white dark:bg-gray-800 rounded-lg p-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setAddMode('existing');
+                  setError(null);
+                }}
+                className={`px-3 py-1 text-xs rounded transition-colors ${
+                  addMode === 'existing'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-foreground/70 hover:text-foreground'
+                }`}
               >
-                <option value="">Select a user</option>
-                {availableUsers.map(user => (
-                  <option key={user.id} value={user.id}>
-                    {user.name} ({user.email})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="role_select" className="block text-sm font-medium text-foreground mb-1">
-                Role
-              </label>
-              <select
-                id="role_select"
-                value={newMember.role}
-                onChange={(e) => setNewMember(prev => ({ ...prev, role: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                Existing User
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setAddMode('new');
+                  setError(null);
+                }}
+                className={`px-3 py-1 text-xs rounded transition-colors ${
+                  addMode === 'new'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-foreground/70 hover:text-foreground'
+                }`}
               >
-                {roles.map(role => (
-                  <option key={role.value} value={role.value}>
-                    {role.label}
-                  </option>
-                ))}
-              </select>
+                Create New User
+              </button>
             </div>
-
-            <button
-              type="submit"
-              disabled={loading || !newMember.user_id}
-              className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {loading ? 'Adding...' : 'Add Member'}
-            </button>
           </div>
-        </form>
+
+          {addMode === 'existing' ? (
+            <form onSubmit={handleAddMember} className="space-y-3">
+              <div>
+                <label htmlFor="user_select" className="block text-sm font-medium text-foreground mb-1">
+                  User
+                </label>
+                <select
+                  id="user_select"
+                  required
+                  value={newMember.user_id}
+                  onChange={(e) => setNewMember(prev => ({ ...prev, user_id: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select a user</option>
+                  {availableUsers.map(user => (
+                    <option key={user.id} value={user.id}>
+                      {user.name} ({user.email})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="role_select" className="block text-sm font-medium text-foreground mb-1">
+                  Role
+                </label>
+                <select
+                  id="role_select"
+                  value={newMember.role}
+                  onChange={(e) => setNewMember(prev => ({ ...prev, role: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {roles.map(role => (
+                    <option key={role.value} value={role.value}>
+                      {role.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading || !newMember.user_id}
+                className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {loading ? 'Adding...' : 'Add Existing Member'}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleCreateAndAddUser} className="space-y-3">
+              <div>
+                <label htmlFor="new_user_name" className="block text-sm font-medium text-foreground mb-1">
+                  Name *
+                </label>
+                <input
+                  type="text"
+                  id="new_user_name"
+                  required
+                  value={newUser.name}
+                  onChange={(e) => setNewUser(prev => ({ ...prev, name: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter full name"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="new_user_email" className="block text-sm font-medium text-foreground mb-1">
+                  Email *
+                </label>
+                <input
+                  type="email"
+                  id="new_user_email"
+                  required
+                  value={newUser.email}
+                  onChange={(e) => setNewUser(prev => ({ ...prev, email: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter email address"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="new_user_role" className="block text-sm font-medium text-foreground mb-1">
+                  Role
+                </label>
+                <select
+                  id="new_user_role"
+                  value={newUser.role}
+                  onChange={(e) => setNewUser(prev => ({ ...prev, role: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {roles.map(role => (
+                    <option key={role.value} value={role.value}>
+                      {role.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading || !newUser.name || !newUser.email}
+                className="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {loading ? 'Creating...' : 'Create and Add User'}
+              </button>
+            </form>
+          )}
+        </div>
       )}
 
       <div className="space-y-3">

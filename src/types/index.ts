@@ -13,6 +13,11 @@ export interface User {
   updated_at: Date;
 }
 
+export interface CreateUserInput {
+  name: string;
+  email: string;
+}
+
 // Team types
 export interface Team {
   id: number;

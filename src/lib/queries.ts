@@ -1,7 +1,9 @@
 import pool from './db';
 import {
   CreateTeamInput,
-  CreateTeamMemberInput, SqlValue,
+  CreateTeamMemberInput,
+  CreateUserInput,
+  SqlValue,
   Team,
   TeamMemberRow,
   TeamMemberWithUser,
@@ -514,4 +516,26 @@ export async function getAllUsers(): Promise<User[]> {
     created_at: new Date(row.created_at),
     updated_at: new Date(row.updated_at)
   }));
+}
+
+export async function createUser(userData: CreateUserInput): Promise<User> {
+  const query = 'INSERT INTO users (name, email) VALUES ($1, $2) RETURNING *';
+  const values = [userData.name, userData.email];
+  
+  try {
+    const result = await pool.query(query, values);
+    const row = result.rows[0];
+    return {
+      id: row.id,
+      name: row.name,
+      email: row.email,
+      created_at: new Date(row.created_at),
+      updated_at: new Date(row.updated_at)
+    };
+  } catch (error) {
+    if (error instanceof DatabaseError && error.code === '23505') {
+      throw new Error('A user with this email already exists');
+    }
+    throw error;
+  }
 }
