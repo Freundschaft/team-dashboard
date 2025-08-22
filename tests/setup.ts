@@ -3,6 +3,15 @@
 
 import { config } from 'dotenv';
 
+interface DbConfig {
+  connectionString?: string;
+  user?: string;
+  host?: string;
+  database?: string;
+  password?: string;
+  port?: number;
+}
+
 // Load environment variables for testing
 config({ path: '.env.local' });
 
@@ -13,14 +22,7 @@ jest.setTimeout(10000);
 declare global {
   var testUtils: {
     sleep: (ms: number) => Promise<void>;
-    getTestDbConfig: () => {
-      connectionString?: string;
-      user?: string;
-      host?: string;
-      database?: string;
-      password?: string;
-      port?: number;
-    };
+    getTestDbConfig: () => DbConfig;
   };
 }
 

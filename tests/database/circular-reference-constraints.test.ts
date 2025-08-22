@@ -36,16 +36,6 @@ describe('Circular Reference Constraints', () => {
         await db.updateTeamParent(teamA, teamA);
       });
     });
-
-    test('should prevent creating team with itself as parent', async () => {
-      // This should fail at creation time, but the database doesn't know the ID yet
-      // So we test the update scenario instead
-      const teamA = await db.createTestTeam('TEST_Team_A');
-      
-      await db.expectCircularReferenceError(async () => {
-        await db.updateTeamParent(teamA, teamA);
-      });
-    });
   });
 
   describe('Two-Level Circular References', () => {

@@ -1,14 +1,6 @@
 // Database test utilities
 import { Pool, QueryResult } from 'pg';
 
-interface DbConfig {
-  connectionString?: string;
-  user?: string;
-  host?: string;
-  database?: string;
-  password?: string;
-  port?: number;
-}
 
 interface TeamHierarchyRow {
   id: number;
