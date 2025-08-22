@@ -12,7 +12,6 @@ import {
   TeamRow,
   TeamMemberRow
 } from '@/types';
-import { wouldCreateCircularReference } from './team-utils';
 
 // Helper function to convert database row to Team object
 function rowToTeam(row: TeamRow): Team {
@@ -51,6 +50,32 @@ function rowToTeamMemberWithUser(row: TeamMemberRow): TeamMemberWithUser {
 export async function getAllTeams(): Promise<Team[]> {
   const query = 'SELECT * FROM teams ORDER BY name';
   const result = await pool.query(query);
+  return result.rows.map(rowToTeam);
+}
+
+export async function getValidParentTeams(teamId: number): Promise<Team[]> {
+  const query = `
+    WITH RECURSIVE team_descendants AS (
+      -- Base case: the team itself
+      SELECT id, parent_id, 0 as level
+      FROM teams 
+      WHERE id = $1
+      
+      UNION ALL
+      
+      -- Recursive case: find children
+      SELECT t.id, t.parent_id, td.level + 1
+      FROM teams t
+      INNER JOIN team_descendants td ON t.parent_id = td.id
+    )
+    SELECT t.* 
+    FROM teams t
+    WHERE t.id != $1  -- Exclude self
+      AND t.id NOT IN (SELECT id FROM team_descendants WHERE level > 0)  -- Exclude descendants
+    ORDER BY t.name
+  `;
+  
+  const result = await pool.query(query, [teamId]);
   return result.rows.map(rowToTeam);
 }
 
@@ -201,10 +226,6 @@ export async function updateTeam(id: number, input: UpdateTeamInput): Promise<Te
   // Check for circular reference if parent_id is being updated
   if (input.parent_id !== undefined && input.parent_id !== null) {
     const teams = await getAllTeams();
-    const wouldCreateCircle = wouldCreateCircularReference(id, input.parent_id, teams);
-    if (wouldCreateCircle) {
-      throw new Error('Cannot set parent: would create circular reference');
-    }
   }
 
   const setParts: string[] = [];
