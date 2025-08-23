@@ -32,6 +32,7 @@ disclaimer: claude code was used to generate boilerplate code
 
 ## Production Deployment considerations
 
+* double check sanitization, possibility of injections, rate limiting
 * ~~it is not possible yet to add new users in the UI, if this application would be the primary source for users this would need to be added~~
 * at the moment the application doesnt implement any kind of login, for production this would be obviously required.
 * an audit log including, who changed what and when would also be required, and possibly an undo feature, if any team changes were to be reverted / historical storage of changes
