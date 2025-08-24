@@ -32,7 +32,12 @@ disclaimer: claude code was used to generate boilerplate code
 
 ## Production Deployment considerations
 
+* double check sanitization, possibility of injections, rate limiting
+* double check error handling, and output user-friendly and secure error messages
+* limit maximum nesting level of teams and amount of users in teams
+* adjust ui for large amount of teams / user, consider pagination if necessary
 * ~~it is not possible yet to add new users in the UI, if this application would be the primary source for users this would need to be added~~
+* it is not possible yet to add new teams
 * at the moment the application doesnt implement any kind of login, for production this would be obviously required.
 * an audit log including, who changed what and when would also be required, and possibly an undo feature, if any team changes were to be reverted / historical storage of changes
 * caching should be tuned, at the moment nextjs standard caching configuration is used
